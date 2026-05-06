@@ -95,6 +95,45 @@ class GlucoseManager: ObservableObject {
         }
     }
 
+    var analysis: String? {
+        guard let reading = latestReading, !history.isEmpty else { return nil }
+
+        let low = lowThreshold
+        let high = highThreshold
+        let inRange = history.filter { $0.value >= low && $0.value <= high }
+        let tirPercent = Int(Double(inRange.count) / Double(history.count) * 100)
+
+        var parts: [String] = []
+
+        // Current status
+        if reading.value < low {
+            let below = useMgdl ? String(format: "%.0f", (low - reading.value) * 18.0182) : String(format: "%.1f", low - reading.value)
+            parts.append("Currently \(below) \(useMgdl ? "mg/dL" : "mmol/L") below target.")
+        } else if reading.value > high {
+            let above = useMgdl ? String(format: "%.0f", (reading.value - high) * 18.0182) : String(format: "%.1f", reading.value - high)
+            parts.append("Currently \(above) \(useMgdl ? "mg/dL" : "mmol/L") above target.")
+        } else {
+            parts.append("Currently in range.")
+        }
+
+        // Trend + time in range
+        if let rate = rateOfChange {
+            let trend: String
+            if rate > 0.05 {
+                trend = "rising"
+            } else if rate < -0.05 {
+                trend = "falling"
+            } else {
+                trend = "stable"
+            }
+            parts.append("Glucose is \(trend) with \(tirPercent)% time in range over the last \(history.count > 20 ? "12" : "few") hours.")
+        } else {
+            parts.append("\(tirPercent)% time in range.")
+        }
+
+        return parts.joined(separator: " ")
+    }
+
     init() {
         if !email.isEmpty && password != nil {
             Task { await fetchGlucose() }

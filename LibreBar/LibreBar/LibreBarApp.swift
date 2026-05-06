@@ -86,6 +86,14 @@ struct MenuBarPopover: View {
 
                 GraphView(readings: glucose.history, hours: graphHours, lowThreshold: glucose.lowThreshold, highThreshold: glucose.highThreshold, useMgdl: glucose.useMgdl)
                     .padding(.top, 2)
+
+                if let analysis = glucose.analysis {
+                    Text(analysis)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                }
             } else if let error = glucose.errorMessage {
                 Text(error)
                     .foregroundColor(.red)
