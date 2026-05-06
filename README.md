@@ -51,22 +51,30 @@ LibreBar communicates only with the official LibreLinkUp API (libreview.io).
 - ServiceManagement
 - macOS Keychain Services
 
-## Running the Project
+## Installation
 
 ### Requirements
 
 - macOS 14.0 or later
-- Xcode 15 or later
 - A LibreLinkUp account with at least one active connection (someone sharing their Libre sensor data with you)
 
-### Setup
+### Download
+
+1. Download **LibreBar-1.0.dmg** from the [latest release](https://github.com/mounirelchoueiri/LibreBarMacOS/releases/latest)
+2. Open the DMG
+3. Drag **LibreBar** to **Applications**
+4. Launch LibreBar from Applications
+5. Click `--` in the menu bar, then click **Settings**
+6. Enter your LibreLinkUp email, password, and select your region
+7. Click **Save & Connect**
+
+### Building from Source
+
+If you prefer to build the app yourself:
 
 1. Clone the repository
-2. Open `LibreBar/LibreBar.xcodeproj` in Xcode
+2. Open `LibreBar/LibreBar.xcodeproj` in Xcode 15 or later
 3. Build and run the app
-4. Click the `--` in the menu bar, then click **Settings**
-5. Enter your LibreLinkUp email, password, and select your region
-6. Click **Save & Connect**
 
 ### Supported Regions
 
