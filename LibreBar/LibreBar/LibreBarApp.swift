@@ -63,6 +63,18 @@ struct MenuBarPopover: View {
                     Text(mins == 0 ? "Just now" : "\(mins) min ago")
                         .font(.caption)
                         .foregroundStyle(reading.isStale ? .orange : .secondary)
+
+                    Spacer()
+
+                    if let days = glucose.sensorDaysRemaining {
+                        HStack(spacing: 3) {
+                            Image(systemName: "sensor.tag.radiowaves.forward")
+                                .font(.caption2)
+                            Text(days == 0 ? "Expiring today" : "\(days)d left")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(days <= 1 ? .orange : .secondary)
+                    }
                 }
 
                 Picker("", selection: $graphHours) {

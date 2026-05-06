@@ -60,6 +60,7 @@ class GlucoseManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var showSettings = false
     @Published var connections: [LibreConnection] = []
+    @Published var sensorDaysRemaining: Int?
 
     @AppStorage("libre_email") var email = ""
     @AppStorage("libre_region") var region = "us"
@@ -256,6 +257,18 @@ class GlucoseManager: ObservableObject {
 
         let patientId = selected["patientId"] as? String
         let displayValue = valueInMgPerDl / 18.0182
+
+        if let sensor = selected["sensor"] as? [String: Any],
+           let activationEpoch = sensor["a"] as? Double {
+            let activation = Date(timeIntervalSince1970: activationEpoch)
+            let elapsed = Date().timeIntervalSince(activation) / 86400
+            self.sensorDaysRemaining = max(0, 14 - Int(elapsed))
+        } else if let sensor = selected["sensor"] as? [String: Any],
+                  let activationInt = sensor["a"] as? Int {
+            let activation = Date(timeIntervalSince1970: Double(activationInt))
+            let elapsed = Date().timeIntervalSince(activation) / 86400
+            self.sensorDaysRemaining = max(0, 14 - Int(elapsed))
+        }
 
         let reading = GlucoseReading(
             value: displayValue,
