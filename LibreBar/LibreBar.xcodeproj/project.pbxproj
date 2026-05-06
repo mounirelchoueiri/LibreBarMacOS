@@ -13,6 +13,7 @@
 		A1000004 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004; };
 		A1000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000005; };
 		A1000006 /* GraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008; };
+		A1000007 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		A2000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000007 /* LibreBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LibreBar.entitlements; sourceTree = "<group>"; };
 		A2000008 /* GraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphView.swift; sourceTree = "<group>"; };
+		A2000009 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		A3000001 /* LibreBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LibreBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -54,6 +56,7 @@
 				A2000003 /* KeychainHelper.swift */,
 				A2000004 /* SettingsView.swift */,
 				A2000008 /* GraphView.swift */,
+				A2000009 /* StatsView.swift */,
 				A2000005 /* Assets.xcassets */,
 				A2000006 /* Info.plist */,
 				A2000007 /* LibreBar.entitlements */,
@@ -138,6 +141,7 @@
 				A1000003 /* KeychainHelper.swift in Sources */,
 				A1000004 /* SettingsView.swift in Sources */,
 				A1000006 /* GraphView.swift in Sources */,
+				A1000007 /* StatsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

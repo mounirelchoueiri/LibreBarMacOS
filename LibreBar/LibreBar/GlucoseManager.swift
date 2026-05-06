@@ -131,6 +131,25 @@ class GlucoseManager: ObservableObject {
             parts.append("\(tirPercent)% time in range.")
         }
 
+        // Last out of range
+        let outOfRange = history.filter { $0.value < low || $0.value > high }
+        if let lastOut = outOfRange.last {
+            let mins = Int(Date().timeIntervalSince(lastOut.timestamp) / 60)
+            let timeAgo: String
+            if mins < 60 {
+                timeAgo = "\(mins) min ago"
+            } else {
+                let hours = mins / 60
+                timeAgo = hours == 1 ? "1 hour ago" : "\(hours) hours ago"
+            }
+            let val = lastOut.displayFormatted(mgdl: useMgdl)
+            let unit = GlucoseReading.displayUnit(mgdl: useMgdl)
+            let direction = lastOut.value < low ? "low" : "high"
+            parts.append("Last \(direction) was \(val) \(unit), \(timeAgo).")
+        } else {
+            parts.append("No out-of-range readings in recent history.")
+        }
+
         return parts.joined(separator: " ")
     }
 
