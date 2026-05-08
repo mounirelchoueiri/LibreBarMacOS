@@ -22,27 +22,48 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("LibreLinkUp Credentials") {
-                TextField("Email", text: $email)
-                    .textFieldStyle(.roundedBorder)
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                Picker("Region", selection: $region) {
-                    ForEach(regions, id: \.0) { r in
-                        Text(r.1).tag(r.0)
-                    }
+            Section("Data Source") {
+                Picker("Source", selection: $glucose.dataSource) {
+                    Text("LibreLinkUp").tag("libre")
+                    Text("Nightscout").tag("nightscout")
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: glucose.dataSource) { _, _ in
+                    glucose.clearData()
+                    Task { await glucose.fetchGlucose() }
                 }
             }
 
-            if glucose.connections.count > 1 {
-                Section("Connection") {
-                    Picker("Monitor", selection: $glucose.selectedConnectionId) {
-                        ForEach(glucose.connections) { conn in
-                            Text(conn.displayName).tag(conn.id)
+            if glucose.isNightscout {
+                Section("Nightscout") {
+                    TextField("URL", text: $glucose.nightscoutURL)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Token (optional)", text: $glucose.nightscoutToken)
+                        .textFieldStyle(.roundedBorder)
+                }
+            } else {
+                Section("LibreLinkUp Credentials") {
+                    TextField("Email", text: $email)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                    Picker("Region", selection: $region) {
+                        ForEach(regions, id: \.0) { r in
+                            Text(r.1).tag(r.0)
                         }
                     }
-                    .onChange(of: glucose.selectedConnectionId) { _, _ in
-                        Task { await glucose.fetchGlucose() }
+                }
+
+                if glucose.connections.count > 1 {
+                    Section("Connection") {
+                        Picker("Monitor", selection: $glucose.selectedConnectionId) {
+                            ForEach(glucose.connections) { conn in
+                                Text(conn.displayName).tag(conn.id)
+                            }
+                        }
+                        .onChange(of: glucose.selectedConnectionId) { _, _ in
+                            Task { await glucose.fetchGlucose() }
+                        }
                     }
                 }
             }
@@ -97,6 +118,15 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Menu Bar") {
+                Toggle("Color indicator dot", isOn: $glucose.showColorDot)
+                Toggle("Mini sparkline graph", isOn: $glucose.showSparkline)
+            }
+
+            Section("Keyboard Shortcut") {
+                HotkeyRecorderView()
+            }
+
             Section("General") {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, newValue in
@@ -114,11 +144,15 @@ struct SettingsView: View {
             }
 
             Button(saved ? "Saved!" : "Save & Connect") {
-                glucose.configure(email: email, password: password, region: region)
+                if glucose.isNightscout {
+                    Task { await glucose.fetchGlucose() }
+                } else {
+                    glucose.configure(email: email, password: password, region: region)
+                }
                 saved = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saved = false }
             }
-            .disabled(email.isEmpty || password.isEmpty)
+            .disabled(glucose.isNightscout ? glucose.nightscoutURL.isEmpty : (email.isEmpty || password.isEmpty))
 
             if let error = glucose.errorMessage {
                 Text(error).foregroundColor(.red).font(.caption)

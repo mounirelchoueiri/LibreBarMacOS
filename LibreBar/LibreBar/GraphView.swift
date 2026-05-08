@@ -69,6 +69,7 @@ struct GraphView: View {
         switch hours {
         case 1: return 1
         case 3: return 1
+        case 24: return 6
         default: return 3
         }
     }

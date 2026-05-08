@@ -68,6 +68,13 @@ class GlucoseManager: ObservableObject {
     @AppStorage("threshold_high") var highThreshold = 10.0
     @AppStorage("selected_connection_id") var selectedConnectionId = ""
     @AppStorage("use_mgdl") var useMgdl = false
+    @AppStorage("data_source") var dataSource = "libre"
+    @AppStorage("nightscout_url") var nightscoutURL = ""
+    @AppStorage("nightscout_token") var nightscoutToken = ""
+    @AppStorage("show_color_dot") var showColorDot = true
+    @AppStorage("show_sparkline") var showSparkline = true
+
+    var isNightscout: Bool { dataSource == "nightscout" }
 
     private var token: String?
     private var accountId: String?
@@ -100,8 +107,6 @@ class GlucoseManager: ObservableObject {
 
         let low = lowThreshold
         let high = highThreshold
-        let inRange = history.filter { $0.value >= low && $0.value <= high }
-        let tirPercent = Int(Double(inRange.count) / Double(history.count) * 100)
 
         var parts: [String] = []
 
@@ -116,7 +121,7 @@ class GlucoseManager: ObservableObject {
             parts.append("Currently in range.")
         }
 
-        // Trend + time in range
+        // Trend
         if let rate = rateOfChange {
             let trend: String
             if rate > 0.05 {
@@ -126,9 +131,7 @@ class GlucoseManager: ObservableObject {
             } else {
                 trend = "stable"
             }
-            parts.append("Glucose is \(trend) with \(tirPercent)% time in range over the last \(history.count > 20 ? "12" : "few") hours.")
-        } else {
-            parts.append("\(tirPercent)% time in range.")
+            parts.append("Glucose is \(trend).")
         }
 
         // Last out of range
@@ -154,10 +157,26 @@ class GlucoseManager: ObservableObject {
     }
 
     init() {
-        if !email.isEmpty && password != nil {
+        if isNightscout {
+            if !nightscoutURL.isEmpty {
+                Task { await fetchGlucose() }
+            }
+        } else if !email.isEmpty && password != nil {
             Task { await fetchGlucose() }
         }
         startTimer()
+    }
+
+    func clearData() {
+        latestReading = nil
+        history = []
+        rateOfChange = nil
+        errorMessage = nil
+        sensorDaysRemaining = nil
+        connections = []
+        token = nil
+        accountId = nil
+        patientId = nil
     }
 
     func configure(email: String, password: String, region: String) {
@@ -176,6 +195,14 @@ class GlucoseManager: ObservableObject {
     }
 
     func fetchGlucose() async {
+        if isNightscout {
+            await fetchNightscout()
+        } else {
+            await fetchLibreLinkUp()
+        }
+    }
+
+    private func fetchLibreLinkUp() async {
         guard !email.isEmpty, let password else {
             errorMessage = "Set credentials in Settings"
             return
@@ -192,7 +219,13 @@ class GlucoseManager: ObservableObject {
 
             if let pid {
                 let graphReadings = try await getGraphData(patientId: pid)
-                self.history = graphReadings
+                let logbookReadings = try await getLogbookData(patientId: pid)
+
+                var merged: [Date: GlucoseReading] = [:]
+                for r in logbookReadings { merged[r.timestamp] = r }
+                for r in graphReadings { merged[r.timestamp] = r }
+                self.history = merged.values.sorted { $0.timestamp < $1.timestamp }
+
                 self.rateOfChange = Self.computeRate(from: graphReadings)
             }
         } catch LibreError.redirect(let newRegion) {
@@ -204,6 +237,79 @@ class GlucoseManager: ObservableObject {
             errorMessage = "Login failed — check credentials"
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func fetchNightscout() async {
+        guard !nightscoutURL.isEmpty else {
+            errorMessage = "Set Nightscout URL in Settings"
+            return
+        }
+
+        do {
+            let readings = try await getNightscoutEntries(count: 288)
+            guard let latest = readings.last else {
+                errorMessage = "No Nightscout data found"
+                return
+            }
+            self.latestReading = latest
+            self.history = readings
+            self.rateOfChange = Self.computeRate(from: readings)
+            self.sensorDaysRemaining = nil
+            self.connections = []
+            self.errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func getNightscoutEntries(count: Int) async throws -> [GlucoseReading] {
+        var urlString = nightscoutURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        urlString += "/api/v1/entries/sgv.json?count=\(count)"
+        if !nightscoutToken.isEmpty {
+            urlString += "&token=\(nightscoutToken)"
+        }
+
+        guard let url = URL(string: urlString) else {
+            throw LibreError.detailed("Invalid Nightscout URL")
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        guard let entries = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            throw LibreError.detailed("Unexpected Nightscout response")
+        }
+
+        return entries.compactMap { entry in
+            guard let sgv = entry["sgv"] as? Double,
+                  let dateMs = entry["date"] as? Double else { return nil }
+
+            let direction = entry["direction"] as? String ?? ""
+            let arrow = Self.nightscoutArrow(direction)
+            let mmol = sgv / 18.0182
+
+            return GlucoseReading(
+                value: mmol,
+                trendArrow: arrow,
+                timestamp: Date(timeIntervalSince1970: dateMs / 1000.0),
+                unit: "mmol/L"
+            )
+        }.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    static func nightscoutArrow(_ direction: String) -> String {
+        switch direction {
+        case "DoubleDown": return "↓↓"
+        case "SingleDown": return "↓"
+        case "FortyFiveDown": return "↘"
+        case "Flat": return "→"
+        case "FortyFiveUp": return "↗"
+        case "SingleUp": return "↑"
+        case "DoubleUp": return "↑↑"
+        default: return "?"
         }
     }
 
@@ -346,6 +452,28 @@ class GlucoseManager: ObservableObject {
               let measurements = graphData["graphData"] as? [[String: Any]] else {
             // Non-critical — just return empty history
             print("[LibreBar] Graph parse failed: \(String(data: data, encoding: .utf8) ?? "nil")")
+            return []
+        }
+
+        return measurements.compactMap { m in
+            guard let mgdl = m["ValueInMgPerDl"] as? Double,
+                  let ts = m["Timestamp"] as? String else { return nil }
+            return GlucoseReading(
+                value: mgdl / 18.0182,
+                trendArrow: "",
+                timestamp: Self.parseTimestamp(ts),
+                unit: "mmol/L"
+            )
+        }.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private func getLogbookData(patientId: String) async throws -> [GlucoseReading] {
+        let request = makeRequest("/llu/connections/\(patientId)/logbook")
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let measurements = json["data"] as? [[String: Any]] else {
+            print("[LibreBar] Logbook parse failed: \(String(data: data, encoding: .utf8) ?? "nil")")
             return []
         }
 

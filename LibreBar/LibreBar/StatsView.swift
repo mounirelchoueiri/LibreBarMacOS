@@ -12,24 +12,6 @@ struct StatsView: View {
         return history.filter { $0.timestamp > cutoff }
     }
 
-    private var timeInRangeLabel: String? {
-        guard history.count >= 2,
-              let first = history.first, let last = history.last else { return nil }
-        let totalSpanSeconds = last.timestamp.timeIntervalSince(first.timestamp)
-        guard totalSpanSeconds > 0 else { return nil }
-        let inRangeCount = history.filter { $0.value >= lowThreshold && $0.value <= highThreshold }.count
-        let fraction = Double(inRangeCount) / Double(history.count)
-        let inRangeSeconds = totalSpanSeconds * fraction
-        let inRangeHours = inRangeSeconds / 3600
-
-        if inRangeHours >= 24 {
-            let days = inRangeHours / 24
-            return String(format: "%.1fd", days)
-        } else {
-            return String(format: "%.1fh", inRangeHours)
-        }
-    }
-
     private var periodInRange: Int? {
         guard !filtered.isEmpty else { return nil }
         let inRange = filtered.filter { $0.value >= lowThreshold && $0.value <= highThreshold }
@@ -42,30 +24,50 @@ struct StatsView: View {
         return sum / Double(filtered.count)
     }
 
+    private var highCount: Int {
+        filtered.filter { $0.value > highThreshold }.count
+    }
+
+    private var lowCount: Int {
+        filtered.filter { $0.value < lowThreshold }.count
+    }
+
     var body: some View {
         if !history.isEmpty {
-            HStack(spacing: 0) {
-                statBox(
-                    title: "Time in Range",
-                    value: timeInRangeLabel ?? "--",
-                    color: .green
-                )
+            VStack(spacing: 6) {
+                HStack(spacing: 0) {
+                    statBox(
+                        title: "Avg (\(graphHours)h)",
+                        value: averageFormatted,
+                        color: avgColor
+                    )
 
-                Divider().frame(height: 36)
+                    Divider().frame(height: 36)
 
-                statBox(
-                    title: "Avg (\(graphHours)h)",
-                    value: averageFormatted,
-                    color: avgColor
-                )
+                    statBox(
+                        title: "In Range (\(graphHours)h)",
+                        value: periodInRange.map { "\($0)%" } ?? "--",
+                        color: tirColor(periodInRange)
+                    )
+                }
 
-                Divider().frame(height: 36)
+                Divider()
 
-                statBox(
-                    title: "In Range (\(graphHours)h)",
-                    value: periodInRange.map { "\($0)%" } ?? "--",
-                    color: tirColor(periodInRange)
-                )
+                HStack(spacing: 0) {
+                    statBox(
+                        title: "Highs (\(graphHours)h)",
+                        value: "\(highCount)",
+                        color: highCount > 0 ? .orange : .green
+                    )
+
+                    Divider().frame(height: 36)
+
+                    statBox(
+                        title: "Lows (\(graphHours)h)",
+                        value: "\(lowCount)",
+                        color: lowCount > 0 ? .red : .green
+                    )
+                }
             }
             .padding(.vertical, 4)
         }
