@@ -77,6 +77,12 @@ LibreBar communicates only with the official LibreLinkUp API (libreview.io) or y
 7. Enter your credentials or Nightscout URL and optional token
 8. Click **Save & Connect**
 
+> **⚠️ Important: macOS may block the app on first launch** because it is not notarized with Apple. If you see *"LibreBar Not Opened"* or *"cannot be opened because the developer cannot be verified"*:
+>
+> **Option 1 (recommended):** Right-click (or Control-click) LibreBar in Applications and select **Open**. Click **Open** in the dialog that appears. You only need to do this once.
+>
+> **Option 2:** Go to **System Settings > Privacy & Security**, scroll down to the security section, and click **Open Anyway** next to the LibreBar message.
+
 ### Building from Source
 
 If you prefer to build the app yourself:
