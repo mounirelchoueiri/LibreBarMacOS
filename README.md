@@ -4,6 +4,12 @@ Open-source macOS menu bar app for real-time glucose monitoring via LibreLinkUp 
 
 `LibreBar` is a lightweight menu bar utility that connects to your LibreLinkUp account or Nightscout instance and displays your latest glucose reading, trend arrow, and history graph directly in the macOS menu bar. It is designed to be simple, fast, and always visible — no need to reach for your phone to check your glucose.
 
+### Menu Bar
+![Menu Bar](screenshots/menubar.png)
+
+### Popover
+![Popover](screenshots/popover.png)
+
 ## What It Does
 
 LibreBar gives you a persistent glucose reading in your menu bar with a popover for detailed information.
