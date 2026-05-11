@@ -123,6 +123,11 @@ struct SettingsView: View {
                 Toggle("Mini sparkline graph", isOn: $glucose.showSparkline)
             }
 
+            Section("Graph") {
+                Toggle("Min/Max markers", isOn: $glucose.showMinMax)
+                Toggle("Prediction line", isOn: $glucose.showPredictionLine)
+            }
+
             Section("Keyboard Shortcut") {
                 HotkeyRecorderView()
             }

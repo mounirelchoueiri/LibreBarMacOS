@@ -73,6 +73,8 @@ class GlucoseManager: ObservableObject {
     @AppStorage("nightscout_token") var nightscoutToken = ""
     @AppStorage("show_color_dot") var showColorDot = true
     @AppStorage("show_sparkline") var showSparkline = true
+    @AppStorage("show_min_max") var showMinMax = true
+    @AppStorage("show_prediction_line") var showPredictionLine = true
 
     var isNightscout: Bool { dataSource == "nightscout" }
 

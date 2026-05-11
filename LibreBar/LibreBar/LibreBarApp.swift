@@ -227,7 +227,7 @@ struct MenuBarPopover: View {
                     }
                 }
 
-                GraphView(readings: glucose.history, hours: graphHours, lowThreshold: glucose.lowThreshold, highThreshold: glucose.highThreshold, useMgdl: glucose.useMgdl)
+                GraphView(readings: glucose.history, hours: graphHours, lowThreshold: glucose.lowThreshold, highThreshold: glucose.highThreshold, useMgdl: glucose.useMgdl, rateOfChange: glucose.showPredictionLine ? glucose.rateOfChange : nil, showMinMax: glucose.showMinMax)
                     .padding(.top, 2)
 
                 StatsView(history: glucose.history, graphHours: graphHours, lowThreshold: glucose.lowThreshold, highThreshold: glucose.highThreshold, useMgdl: glucose.useMgdl)
