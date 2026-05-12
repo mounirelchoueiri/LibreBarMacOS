@@ -253,10 +253,15 @@ struct SettingsView: View {
     }
 
     private func toggleRow(_ label: String, isOn: Binding<Bool>) -> some View {
-        Toggle(label, isOn: isOn)
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .font(.callout)
+        HStack {
+            Text(label)
+                .font(.callout)
+            Spacer()
+            Toggle("", isOn: isOn)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+        }
     }
 
     private func sliderRow(label: String, color: Color, value: Binding<Double>, range: ClosedRange<Double>, step: Double, format: String) -> some View {
