@@ -11,7 +11,7 @@ Open-source macOS menu bar app for real-time glucose monitoring via LibreLinkUp 
 ![Popover](screenshots/popover.png)
 
 ### Settings
-![Settings]
+![Settings](screenshots/settings.png)
 
 ## What It Does
 
