@@ -10,6 +10,8 @@ class UpdateChecker {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0"
     }()
 
+    @Published var isUpdating = false
+
     func checkForUpdates(silent: Bool = true) {
         Task {
             await check(silent: silent)
@@ -31,8 +33,8 @@ class UpdateChecker {
 
             if isNewer(latestVersion, than: currentVersion) {
                 let body = json["body"] as? String ?? ""
-                let htmlURL = json["html_url"] as? String ?? "https://github.com/\(repo)/releases/latest"
-                showUpdateAlert(newVersion: latestVersion, notes: body, url: htmlURL)
+                let dmgURL = findDMGAsset(in: json)
+                showUpdateAlert(newVersion: latestVersion, notes: body, dmgURL: dmgURL)
             } else if !silent {
                 showUpToDateAlert()
             }
@@ -41,6 +43,17 @@ class UpdateChecker {
                 print("[LibreBar] Update check failed: \(error)")
             }
         }
+    }
+
+    private func findDMGAsset(in release: [String: Any]) -> URL? {
+        guard let assets = release["assets"] as? [[String: Any]] else { return nil }
+        for asset in assets {
+            if let name = asset["name"] as? String, name.hasSuffix(".dmg"),
+               let urlString = asset["browser_download_url"] as? String {
+                return URL(string: urlString)
+            }
+        }
+        return nil
     }
 
     private func isNewer(_ remote: String, than local: String) -> Bool {
@@ -55,20 +68,135 @@ class UpdateChecker {
         return false
     }
 
-    private func showUpdateAlert(newVersion: String, notes: String, url: String) {
+    private func showUpdateAlert(newVersion: String, notes: String, dmgURL: URL?) {
         let alert = NSAlert()
         alert.messageText = "LibreBar \(newVersion) Available"
         alert.informativeText = "You are running v\(currentVersion). A new version is available.\n\n\(truncateNotes(notes))"
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Download")
+        alert.addButton(withTitle: "Update Now")
         alert.addButton(withTitle: "Later")
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            if let downloadURL = URL(string: url) {
-                NSWorkspace.shared.open(downloadURL)
+            if let dmgURL {
+                Task { await downloadAndInstall(dmgURL: dmgURL) }
             }
         }
+    }
+
+    private func downloadAndInstall(dmgURL: URL) async {
+        isUpdating = true
+
+        let progressAlert = NSAlert()
+        progressAlert.messageText = "Updating LibreBar..."
+        progressAlert.informativeText = "Downloading update. Please wait."
+        progressAlert.alertStyle = .informational
+        progressAlert.addButton(withTitle: "Cancel")
+
+        let indicator = NSProgressIndicator()
+        indicator.style = .spinning
+        indicator.controlSize = .small
+        indicator.startAnimation(nil)
+        indicator.frame = NSRect(x: 0, y: 0, width: 32, height: 32)
+        progressAlert.accessoryView = indicator
+
+        // Show non-modally so we can dismiss it
+        let window = NSWindow()
+        window.contentView = progressAlert.window.contentView
+
+        do {
+            // Download DMG
+            let (tempURL, _) = try await URLSession.shared.download(from: dmgURL)
+            let dmgPath = NSTemporaryDirectory() + "LibreBar-update.dmg"
+            let dmgFileURL = URL(fileURLWithPath: dmgPath)
+            try? FileManager.default.removeItem(at: dmgFileURL)
+            try FileManager.default.moveItem(at: tempURL, to: dmgFileURL)
+
+            // Mount DMG
+            let mountPoint = try await mountDMG(at: dmgPath)
+
+            // Find .app in mounted volume
+            let appSource = mountPoint + "/LibreBar.app"
+            guard FileManager.default.fileExists(atPath: appSource) else {
+                throw UpdateError.appNotFound
+            }
+
+            // Get current app path
+            let currentAppPath = Bundle.main.bundlePath
+
+            // Replace app
+            let backupPath = currentAppPath + ".bak"
+            try? FileManager.default.removeItem(atPath: backupPath)
+            try FileManager.default.moveItem(atPath: currentAppPath, toPath: backupPath)
+
+            do {
+                try FileManager.default.copyItem(atPath: appSource, toPath: currentAppPath)
+            } catch {
+                // Restore backup if copy fails
+                try? FileManager.default.moveItem(atPath: backupPath, toPath: currentAppPath)
+                throw error
+            }
+
+            // Clean up backup
+            try? FileManager.default.removeItem(atPath: backupPath)
+
+            // Unmount DMG
+            await unmountDMG(mountPoint: mountPoint)
+            try? FileManager.default.removeItem(at: dmgFileURL)
+
+            // Relaunch
+            relaunch()
+
+        } catch {
+            isUpdating = false
+            let errorAlert = NSAlert()
+            errorAlert.messageText = "Update Failed"
+            errorAlert.informativeText = error.localizedDescription
+            errorAlert.alertStyle = .critical
+            errorAlert.addButton(withTitle: "OK")
+            errorAlert.runModal()
+        }
+    }
+
+    private func mountDMG(at path: String) async throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        process.arguments = ["attach", path, "-nobrowse", "-quiet", "-plist"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let entities = plist["system-entities"] as? [[String: Any]] else {
+            throw UpdateError.mountFailed
+        }
+
+        for entity in entities {
+            if let mountPoint = entity["mount-point"] as? String {
+                return mountPoint
+            }
+        }
+        throw UpdateError.mountFailed
+    }
+
+    private func unmountDMG(mountPoint: String) async {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        process.arguments = ["detach", mountPoint, "-quiet"]
+        try? process.run()
+        process.waitUntilExit()
+    }
+
+    private func relaunch() {
+        let appPath = Bundle.main.bundlePath
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "sleep 1 && open \"\(appPath)\""]
+        try? task.run()
+        NSApp.terminate(nil)
     }
 
     private func showUpToDateAlert() {
@@ -84,5 +212,17 @@ class UpdateChecker {
         let lines = notes.components(separatedBy: .newlines).prefix(8)
         let text = lines.joined(separator: "\n")
         return text.count > 300 ? String(text.prefix(300)) + "..." : text
+    }
+}
+
+enum UpdateError: Error, LocalizedError {
+    case appNotFound
+    case mountFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .appNotFound: return "Could not find LibreBar.app in the update package"
+        case .mountFailed: return "Could not open the update package"
+        }
     }
 }
