@@ -45,6 +45,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { self?.togglePopover() }
         }
         HotkeyManager.shared.register()
+
+        UpdateChecker.shared.checkForUpdates(silent: true)
     }
 
     func updateLabel() {

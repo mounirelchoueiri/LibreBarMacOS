@@ -16,6 +16,7 @@
 		A1000007 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009; };
 		A1000008 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000A; };
 		A1000009 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000B; };
+		A100000A /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		A2000009 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		A200000A /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		A200000B /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
+		A200000C /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A3000001 /* LibreBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LibreBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -63,6 +65,7 @@
 				A2000009 /* StatsView.swift */,
 				A200000A /* HotkeyManager.swift */,
 				A200000B /* HotkeyRecorderView.swift */,
+				A200000C /* UpdateChecker.swift */,
 				A2000005 /* Assets.xcassets */,
 				A2000006 /* Info.plist */,
 				A2000007 /* LibreBar.entitlements */,
@@ -150,6 +153,7 @@
 				A1000007 /* StatsView.swift in Sources */,
 				A1000008 /* HotkeyManager.swift in Sources */,
 				A1000009 /* HotkeyRecorderView.swift in Sources */,
+				A100000A /* UpdateChecker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -231,7 +235,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.librebar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -256,7 +260,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.librebar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

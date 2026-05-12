@@ -33,6 +33,7 @@ Everything is built around the idea that checking your glucose should be instant
 - **Interactive graph** — selectable time range (1h, 3h, 12h, 24h with Nightscout) with gradient fill, prediction line, and min/max markers
 - **Glucose predictions** — 30-minute and 60-minute forecasts with color-coded status dots
 - **Configurable graph** — toggle min/max markers and prediction line on/off in Settings
+- **Auto-update checker** — checks GitHub for new releases on launch, with manual check in Settings
 - **Stats dashboard** — average glucose, % in range, highs count, lows count
 - **AI analysis** — plain-English summary of current status, trend, and last out-of-range reading
 - **Rate of change** — mmol/L or mg/dL per minute
