@@ -10,6 +10,9 @@ Open-source macOS menu bar app for real-time glucose monitoring via LibreLinkUp 
 ### Popover
 ![Popover](screenshots/popover.png)
 
+### Settings
+![Settings](screenshots/settings.png)
+
 ## What It Does
 
 LibreBar gives you a persistent glucose reading in your menu bar with a popover for detailed information.
