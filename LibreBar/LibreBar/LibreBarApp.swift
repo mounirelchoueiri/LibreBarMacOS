@@ -305,8 +305,9 @@ class SettingsWindowController {
         let view = SettingsView(glucose: glucose)
         let hostingView = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hostingView)
-        window.title = "LibreBar Settings"
+        window.title = "Settings"
         window.styleMask = [.titled, .closable]
+        window.titlebarAppearsTransparent = false
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
