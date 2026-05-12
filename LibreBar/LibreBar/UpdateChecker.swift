@@ -11,6 +11,9 @@ class UpdateChecker {
     }()
 
     @Published var isUpdating = false
+    private var progressWindow: NSWindow?
+    private var progressBar: NSProgressIndicator?
+    private var progressLabel: NSTextField?
 
     func checkForUpdates(silent: Bool = true) {
         Task {
@@ -84,35 +87,97 @@ class UpdateChecker {
         }
     }
 
+    // MARK: - Progress Window
+
+    private func showProgressWindow() {
+        let window = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 340, height: 120),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Updating LibreBar"
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 120))
+
+        let icon = NSImageView(frame: NSRect(x: 20, y: 48, width: 40, height: 40))
+        if let img = NSImage(systemSymbolName: "arrow.down.circle.fill", accessibilityDescription: nil) {
+            icon.image = img
+            icon.contentTintColor = .controlAccentColor
+            icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 28, weight: .light)
+        }
+        container.addSubview(icon)
+
+        let titleLabel = NSTextField(labelWithString: "Downloading update...")
+        titleLabel.frame = NSRect(x: 70, y: 72, width: 250, height: 20)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        container.addSubview(titleLabel)
+
+        let bar = NSProgressIndicator(frame: NSRect(x: 70, y: 50, width: 245, height: 14))
+        bar.style = .bar
+        bar.isIndeterminate = false
+        bar.minValue = 0
+        bar.maxValue = 1
+        bar.doubleValue = 0
+        container.addSubview(bar)
+
+        let sublabel = NSTextField(labelWithString: "Starting...")
+        sublabel.frame = NSRect(x: 70, y: 28, width: 250, height: 16)
+        sublabel.font = .systemFont(ofSize: 11)
+        sublabel.textColor = .secondaryLabelColor
+        container.addSubview(sublabel)
+
+        window.contentView = container
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        self.progressWindow = window
+        self.progressBar = bar
+        self.progressLabel = sublabel
+    }
+
+    private func updateProgress(_ fraction: Double, status: String) {
+        progressBar?.doubleValue = fraction
+        progressLabel?.stringValue = status
+    }
+
+    private func closeProgressWindow() {
+        progressWindow?.close()
+        progressWindow = nil
+        progressBar = nil
+        progressLabel = nil
+    }
+
+    // MARK: - Download & Install
+
     private func downloadAndInstall(dmgURL: URL) async {
         isUpdating = true
-
-        let progressAlert = NSAlert()
-        progressAlert.messageText = "Updating LibreBar..."
-        progressAlert.informativeText = "Downloading update. Please wait."
-        progressAlert.alertStyle = .informational
-        progressAlert.addButton(withTitle: "Cancel")
-
-        let indicator = NSProgressIndicator()
-        indicator.style = .spinning
-        indicator.controlSize = .small
-        indicator.startAnimation(nil)
-        indicator.frame = NSRect(x: 0, y: 0, width: 32, height: 32)
-        progressAlert.accessoryView = indicator
-
-        // Show non-modally so we can dismiss it
-        let window = NSWindow()
-        window.contentView = progressAlert.window.contentView
+        showProgressWindow()
 
         do {
-            // Download DMG
-            let (tempURL, response) = try await URLSession.shared.download(from: dmgURL)
+            // Download DMG with progress tracking
+            updateProgress(0, status: "Connecting...")
+            let delegate = DownloadProgressDelegate { [weak self] fraction in
+                Task { @MainActor in
+                    let pct = Int(fraction * 100)
+                    self?.updateProgress(fraction * 0.7, status: "Downloading... \(pct)%")
+                }
+            }
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            let (tempURL, response) = try await session.download(from: dmgURL)
+            session.invalidateAndCancel()
+
+            updateProgress(0.7, status: "Download complete")
+
             let dmgPath = NSTemporaryDirectory() + "LibreBar-update.dmg"
             let dmgFileURL = URL(fileURLWithPath: dmgPath)
             try? FileManager.default.removeItem(at: dmgFileURL)
             try FileManager.default.moveItem(at: tempURL, to: dmgFileURL)
 
-            // Verify we got an actual DMG file
+            // Verify download
             let attrs = try FileManager.default.attributesOfItem(atPath: dmgPath)
             let fileSize = attrs[.size] as? Int64 ?? 0
             let httpResponse = response as? HTTPURLResponse
@@ -122,18 +187,18 @@ class UpdateChecker {
             }
 
             // Mount DMG
+            updateProgress(0.75, status: "Preparing update...")
             let mountPoint = try await mountDMG(at: dmgPath)
 
-            // Find .app in mounted volume
+            // Find .app
             let appSource = mountPoint + "/LibreBar.app"
             guard FileManager.default.fileExists(atPath: appSource) else {
                 throw UpdateError.appNotFound
             }
 
-            // Get current app path
-            let currentAppPath = Bundle.main.bundlePath
-
             // Replace app
+            updateProgress(0.85, status: "Installing...")
+            let currentAppPath = Bundle.main.bundlePath
             let backupPath = currentAppPath + ".bak"
             try? FileManager.default.removeItem(atPath: backupPath)
             try FileManager.default.moveItem(atPath: currentAppPath, toPath: backupPath)
@@ -141,23 +206,24 @@ class UpdateChecker {
             do {
                 try FileManager.default.copyItem(atPath: appSource, toPath: currentAppPath)
             } catch {
-                // Restore backup if copy fails
                 try? FileManager.default.moveItem(atPath: backupPath, toPath: currentAppPath)
                 throw error
             }
 
-            // Clean up backup
+            // Clean up
             try? FileManager.default.removeItem(atPath: backupPath)
-
-            // Unmount DMG
+            updateProgress(0.95, status: "Cleaning up...")
             await unmountDMG(mountPoint: mountPoint)
             try? FileManager.default.removeItem(at: dmgFileURL)
 
-            // Relaunch
+            // Done
+            updateProgress(1.0, status: "Relaunching...")
+            try? await Task.sleep(nanoseconds: 600_000_000)
             relaunch()
 
         } catch {
             isUpdating = false
+            closeProgressWindow()
             let errorAlert = NSAlert()
             errorAlert.messageText = "Update Failed"
             errorAlert.informativeText = error.localizedDescription
@@ -166,6 +232,8 @@ class UpdateChecker {
             errorAlert.runModal()
         }
     }
+
+    // MARK: - DMG Handling
 
     private func mountDMG(at path: String) async throws -> String {
         let process = Process()
@@ -178,7 +246,6 @@ class UpdateChecker {
 
         try process.run()
 
-        // Read pipe data BEFORE waitUntilExit to avoid deadlock when buffer fills
         let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
         let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
@@ -237,6 +304,28 @@ class UpdateChecker {
         return text.count > 300 ? String(text.prefix(300)) + "..." : text
     }
 }
+
+// MARK: - Download Progress Delegate
+
+class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate {
+    let onProgress: (Double) -> Void
+
+    init(onProgress: @escaping (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        // Handled by async download call
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        let fraction = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+        onProgress(fraction)
+    }
+}
+
+// MARK: - Errors
 
 enum UpdateError: Error, LocalizedError {
     case appNotFound
