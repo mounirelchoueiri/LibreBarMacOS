@@ -106,11 +106,20 @@ class UpdateChecker {
 
         do {
             // Download DMG
-            let (tempURL, _) = try await URLSession.shared.download(from: dmgURL)
+            let (tempURL, response) = try await URLSession.shared.download(from: dmgURL)
             let dmgPath = NSTemporaryDirectory() + "LibreBar-update.dmg"
             let dmgFileURL = URL(fileURLWithPath: dmgPath)
             try? FileManager.default.removeItem(at: dmgFileURL)
             try FileManager.default.moveItem(at: tempURL, to: dmgFileURL)
+
+            // Verify we got an actual DMG file
+            let attrs = try FileManager.default.attributesOfItem(atPath: dmgPath)
+            let fileSize = attrs[.size] as? Int64 ?? 0
+            let httpResponse = response as? HTTPURLResponse
+            print("[LibreBar] Downloaded DMG: \(fileSize) bytes, HTTP \(httpResponse?.statusCode ?? 0)")
+            guard fileSize > 1000 else {
+                throw UpdateError.downloadFailed
+            }
 
             // Mount DMG
             let mountPoint = try await mountDMG(at: dmgPath)
@@ -161,16 +170,30 @@ class UpdateChecker {
     private func mountDMG(at path: String) async throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-        process.arguments = ["attach", path, "-nobrowse", "-quiet", "-plist"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
+        process.arguments = ["attach", path, "-nobrowse", "-plist"]
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
         try process.run()
+
+        // Read pipe data BEFORE waitUntilExit to avoid deadlock when buffer fills
+        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+
         process.waitUntilExit()
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+        if process.terminationStatus != 0 {
+            let errorMsg = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            print("[LibreBar] hdiutil failed: \(errorMsg)")
+            throw UpdateError.mountFailed
+        }
+
+        guard !data.isEmpty,
+              let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
               let entities = plist["system-entities"] as? [[String: Any]] else {
+            print("[LibreBar] hdiutil plist parse failed, data size: \(data.count)")
             throw UpdateError.mountFailed
         }
 
@@ -218,11 +241,13 @@ class UpdateChecker {
 enum UpdateError: Error, LocalizedError {
     case appNotFound
     case mountFailed
+    case downloadFailed
 
     var errorDescription: String? {
         switch self {
         case .appNotFound: return "Could not find LibreBar.app in the update package"
         case .mountFailed: return "Could not open the update package"
+        case .downloadFailed: return "Downloaded file is not a valid update package"
         }
     }
 }
