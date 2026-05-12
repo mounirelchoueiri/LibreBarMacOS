@@ -118,7 +118,7 @@ struct SettingsView: View {
                     .fill(pillDotColor)
                     .frame(width: 7, height: 7)
 
-                if connectState == .connecting {
+                if pillShowsPulse {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 7, height: 7)
@@ -142,19 +142,23 @@ struct SettingsView: View {
     }
 
     private var pillDotColor: Color {
-        switch connectState {
-        case .idle: return Color.gray.opacity(0.55)
-        case .connecting: return .orange
-        case .connected: return .green
-        }
+        if connectState == .connecting { return .orange }
+        if connectState == .connected { return .green }
+        if glucose.latestReading != nil { return .green }
+        if glucose.errorMessage != nil { return .red }
+        return Color.gray.opacity(0.55)
     }
 
     private var pillLabel: String {
-        switch connectState {
-        case .idle: return glucose.isNightscout ? "Nightscout" : "LibreLinkUp"
-        case .connecting: return "Connecting..."
-        case .connected: return "Connected"
-        }
+        if connectState == .connecting { return "Connecting..." }
+        if connectState == .connected { return "Connected" }
+        if glucose.latestReading != nil { return "Connected" }
+        if glucose.errorMessage != nil { return "Error" }
+        return glucose.isNightscout ? "Nightscout" : "LibreLinkUp"
+    }
+
+    private var pillShowsPulse: Bool {
+        connectState == .connecting
     }
 
     private var pulseScale: CGFloat {
