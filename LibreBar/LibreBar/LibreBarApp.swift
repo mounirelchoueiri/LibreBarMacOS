@@ -47,6 +47,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.register()
 
         UpdateChecker.shared.checkForUpdates(silent: true)
+        UpdateChecker.shared.scheduleDailyCheck()
     }
 
     func updateLabel() {

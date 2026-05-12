@@ -11,6 +11,7 @@ class UpdateChecker {
     }()
 
     @Published var isUpdating = false
+    private var dailyTimer: Timer?
     private var progressWindow: NSWindow?
     private var progressBar: NSProgressIndicator?
     private var progressLabel: NSTextField?
@@ -18,6 +19,27 @@ class UpdateChecker {
     func checkForUpdates(silent: Bool = true) {
         Task {
             await check(silent: silent)
+        }
+    }
+
+    func scheduleDailyCheck() {
+        dailyTimer?.invalidate()
+
+        // Find next 9:00 AM
+        var components = DateComponents()
+        components.hour = 9
+        components.minute = 0
+        components.second = 0
+
+        guard let next9am = Calendar.current.nextDate(after: Date(), matching: components, matchingPolicy: .nextTime) else { return }
+
+        let interval = next9am.timeIntervalSinceNow
+        dailyTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.checkForUpdates(silent: true)
+                // Reschedule for tomorrow
+                self?.scheduleDailyCheck()
+            }
         }
     }
 
