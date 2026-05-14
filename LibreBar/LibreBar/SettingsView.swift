@@ -363,6 +363,7 @@ struct SettingsView: View {
                             checkboxToggle("Prediction", isOn: $glucose.showPredictionLine)
                         }
                     }
+
                 }
             }
         }

@@ -474,21 +474,26 @@ class GlucoseManager: ObservableObject {
         let (data, _) = try await URLSession.shared.data(for: request)
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let measurements = json["data"] as? [[String: Any]] else {
+              let entries = json["data"] as? [[String: Any]] else {
             print("[LibreBar] Logbook parse failed: \(String(data: data, encoding: .utf8) ?? "nil")")
             return []
         }
 
-        return measurements.compactMap { m in
-            guard let mgdl = m["ValueInMgPerDl"] as? Double,
-                  let ts = m["Timestamp"] as? String else { return nil }
-            return GlucoseReading(
-                value: mgdl / 18.0182,
-                trendArrow: "",
-                timestamp: Self.parseTimestamp(ts),
-                unit: "mmol/L"
-            )
-        }.sorted { $0.timestamp < $1.timestamp }
+        var readings: [GlucoseReading] = []
+
+        for entry in entries {
+            if let mgdl = entry["ValueInMgPerDl"] as? Double,
+               let ts = entry["Timestamp"] as? String {
+                readings.append(GlucoseReading(
+                    value: mgdl / 18.0182,
+                    trendArrow: "",
+                    timestamp: Self.parseTimestamp(ts),
+                    unit: "mmol/L"
+                ))
+            }
+        }
+
+        return readings.sorted { $0.timestamp < $1.timestamp }
     }
 
     static func computeRate(from readings: [GlucoseReading]) -> Double? {

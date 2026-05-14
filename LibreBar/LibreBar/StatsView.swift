@@ -7,34 +7,88 @@ struct StatsView: View {
     let highThreshold: Double
     let useMgdl: Bool
 
+    // Always 12h for TIR
+    private var tir12h: [GlucoseReading] {
+        let cutoff = Date().addingTimeInterval(-12 * 3600)
+        return history.filter { $0.timestamp > cutoff }
+    }
+
+    private var tirLowPct: Double {
+        guard !tir12h.isEmpty else { return 0 }
+        return Double(tir12h.filter { $0.value < lowThreshold }.count) / Double(tir12h.count)
+    }
+
+    private var tirInPct: Double {
+        guard !tir12h.isEmpty else { return 0 }
+        return Double(tir12h.filter { $0.value >= lowThreshold && $0.value <= highThreshold }.count) / Double(tir12h.count)
+    }
+
+    private var tirHighPct: Double {
+        guard !tir12h.isEmpty else { return 0 }
+        return Double(tir12h.filter { $0.value > highThreshold }.count) / Double(tir12h.count)
+    }
+
+    // Graph-period stats
     private var filtered: [GlucoseReading] {
         let cutoff = Date().addingTimeInterval(-Double(graphHours) * 3600)
         return history.filter { $0.timestamp > cutoff }
     }
 
-    private var periodInRange: Int? {
-        guard !filtered.isEmpty else { return nil }
-        let inRange = filtered.filter { $0.value >= lowThreshold && $0.value <= highThreshold }
-        return Int(Double(inRange.count) / Double(filtered.count) * 100)
-    }
-
     private var averageGlucose: Double? {
         guard !filtered.isEmpty else { return nil }
-        let sum = filtered.reduce(0.0) { $0 + $1.value }
-        return sum / Double(filtered.count)
+        return filtered.reduce(0.0) { $0 + $1.value } / Double(filtered.count)
     }
 
-    private var highCount: Int {
-        filtered.filter { $0.value > highThreshold }.count
-    }
-
-    private var lowCount: Int {
-        filtered.filter { $0.value < lowThreshold }.count
-    }
+    private var highCount: Int { filtered.filter { $0.value > highThreshold }.count }
+    private var lowCount: Int  { filtered.filter { $0.value < lowThreshold  }.count }
 
     var body: some View {
         if !history.isEmpty {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
+                // TIR bar — always 12h
+                if !tir12h.isEmpty {
+                    VStack(spacing: 4) {
+                        GeometryReader { geo in
+                            HStack(spacing: 2) {
+                                if tirLowPct > 0 {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(Color.red.opacity(0.85))
+                                        .frame(width: geo.size.width * tirLowPct)
+                                }
+                                if tirInPct > 0 {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(Color.green.opacity(0.85))
+                                        .frame(width: geo.size.width * tirInPct)
+                                }
+                                if tirHighPct > 0 {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(Color.orange.opacity(0.85))
+                                        .frame(width: geo.size.width * tirHighPct)
+                                }
+                            }
+                        }
+                        .frame(height: 8)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+
+                        HStack(spacing: 0) {
+                            tirLabel("Low", pct: tirLowPct, color: .red)
+                            Spacer()
+                            tirLabel("In Range", pct: tirInPct, color: .green)
+                            Spacer()
+                            tirLabel("High", pct: tirHighPct, color: .orange)
+                        }
+
+                        Text("Time in Range · 12h")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .padding(.horizontal, 2)
+                }
+
+                Divider()
+
+                // Graph-period stats
                 HStack(spacing: 0) {
                     statBox(
                         title: "Avg (\(graphHours)h)",
@@ -44,16 +98,6 @@ struct StatsView: View {
 
                     Divider().frame(height: 36)
 
-                    statBox(
-                        title: "In Range (\(graphHours)h)",
-                        value: periodInRange.map { "\($0)%" } ?? "--",
-                        color: tirColor(periodInRange)
-                    )
-                }
-
-                Divider()
-
-                HStack(spacing: 0) {
                     statBox(
                         title: "Highs (\(graphHours)h)",
                         value: "\(highCount)",
@@ -73,25 +117,27 @@ struct StatsView: View {
         }
     }
 
+    private func tirLabel(_ label: String, pct: Double, color: Color) -> some View {
+        VStack(spacing: 1) {
+            Text("\(Int(pct * 100))%")
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(pct > 0 ? color : .secondary)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var averageFormatted: String {
         guard let avg = averageGlucose else { return "--" }
-        if useMgdl {
-            return String(format: "%.0f", avg * 18.0182)
-        }
-        return String(format: "%.1f", avg)
+        return useMgdl
+            ? String(format: "%.0f", avg * 18.0182)
+            : String(format: "%.1f", avg)
     }
 
     private var avgColor: Color {
         guard let avg = averageGlucose else { return .secondary }
-        if avg >= lowThreshold && avg <= highThreshold { return .green }
-        return .orange
-    }
-
-    private func tirColor(_ percent: Int?) -> Color {
-        guard let p = percent else { return .secondary }
-        if p >= 70 { return .green }
-        if p >= 50 { return .orange }
-        return .red
+        return (avg >= lowThreshold && avg <= highThreshold) ? .green : .orange
     }
 
     private func statBox(title: String, value: String, color: Color) -> some View {

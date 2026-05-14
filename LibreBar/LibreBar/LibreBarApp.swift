@@ -315,3 +315,4 @@ class SettingsWindowController {
         self.window = window
     }
 }
+
