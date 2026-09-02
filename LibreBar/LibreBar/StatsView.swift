@@ -42,6 +42,10 @@ struct StatsView: View {
     private var highCount: Int { filtered.filter { $0.value > highThreshold }.count }
     private var lowCount: Int  { filtered.filter { $0.value < lowThreshold  }.count }
 
+    private var gmiSummary: GMISummary? {
+        GlucoseStats.gmi(from: history)
+    }
+
     var body: some View {
         if !history.isEmpty {
             VStack(spacing: 8) {
@@ -110,6 +114,16 @@ struct StatsView: View {
                         title: "Lows (\(graphHours)h)",
                         value: "\(lowCount)",
                         color: lowCount > 0 ? .red : .green
+                    )
+                }
+
+                if let gmi = gmiSummary {
+                    Divider()
+
+                    statBox(
+                        title: gmi.windowLabel,
+                        value: gmi.formatted,
+                        color: .secondary
                     )
                 }
             }

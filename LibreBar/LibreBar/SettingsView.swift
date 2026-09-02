@@ -1,10 +1,45 @@
 import SwiftUI
 import ServiceManagement
+import UserNotifications
 
 // MARK: - Connect State Machine
 
 enum ConnectState {
     case idle, connecting, connected
+}
+
+enum SettingsWindowMetrics {
+    // Sidebar + detail pane at 50% of the previous detail width.
+    static let width: CGFloat = 652
+    static let height: CGFloat = 600
+    static let sidebarMin: CGFloat = 220
+    static let sidebarIdeal: CGFloat = 240
+    static let sidebarMax: CGFloat = 260
+}
+
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case connection, display, targetRange, alerts, general
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .connection: return "Connection"
+        case .display: return "Display"
+        case .targetRange: return "Target Range"
+        case .alerts: return "Alerts"
+        case .general: return "General"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .connection: return "personalhotspot"
+        case .display: return "menubar.rectangle"
+        case .targetRange: return "slider.horizontal.3"
+        case .alerts: return "bell.badge"
+        case .general: return "gearshape"
+        }
+    }
 }
 
 // MARK: - Settings View
@@ -16,6 +51,17 @@ struct SettingsView: View {
     @State private var region = "us"
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var connectState: ConnectState = .idle
+    @State private var selection: SettingsTab = .connection
+
+    @AppStorage(AlertKey.enabled) private var alertsEnabled = false
+    @AppStorage(AlertKey.low) private var alertLow = true
+    @AppStorage(AlertKey.high) private var alertHigh = true
+    @AppStorage(AlertKey.urgent) private var alertUrgent = true
+    @AppStorage(AlertKey.stale) private var alertStale = true
+    @AppStorage(AlertKey.connection) private var alertConnection = true
+    @AppStorage(AlertKey.sound) private var alertSound = true
+    @AppStorage(AlertKey.snoozeMinutes) private var snoozeMinutes = 30
+    @State private var notifPermission: UNAuthorizationStatus = .notDetermined
 
     private let regions = [
         ("us", "United States"),
@@ -29,77 +75,92 @@ struct SettingsView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            heroHeader
-
-            // Two-column body
-            HStack(alignment: .top, spacing: 14) {
-                // Left column
-                VStack(spacing: 14) {
-                    connectionSection
-                    generalSection
-                }
-                .frame(maxWidth: .infinity)
-
-                // Right column
-                VStack(spacing: 14) {
-                    displaySection
-                    targetRangeSection
-                }
-                .frame(maxWidth: .infinity)
+        NavigationSplitView {
+            List(SettingsTab.allCases, selection: $selection) { tab in
+                Label(tab.title, systemImage: tab.icon).tag(tab)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
-            .padding(.bottom, 14)
-
-            versionFooter
-                .padding(.bottom, 14)
+            .navigationSplitViewColumnWidth(
+                min: SettingsWindowMetrics.sidebarMin,
+                ideal: SettingsWindowMetrics.sidebarIdeal,
+                max: SettingsWindowMetrics.sidebarMax
+            )
+            .safeAreaInset(edge: .top, spacing: 0) { heroHeader }
+        } detail: {
+            ScrollView {
+                VStack(spacing: 14) {
+                    detailSection
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .safeAreaInset(edge: .bottom) {
+                versionFooter
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.bar)
+            }
         }
-        .frame(width: 930)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(width: SettingsWindowMetrics.width, height: SettingsWindowMetrics.height)
         .onAppear {
             email = glucose.email
             region = glucose.region
+            refreshPermission()
         }
+    }
+
+    @ViewBuilder private var detailSection: some View {
+        switch selection {
+        case .connection: connectionSection
+        case .display: displaySection
+        case .targetRange: targetRangeSection
+        case .alerts: alertsSection
+        case .general: generalSection
+        }
+    }
+
+    private func refreshPermission() {
+        AlertManager.shared.authorizationStatus { notifPermission = $0 }
     }
 
     // MARK: - Hero Header
 
     private var heroHeader: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 11)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.blue, Color(red: 0.37, green: 0.61, blue: 1.0)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 11)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.blue, Color(red: 0.37, green: 0.61, blue: 1.0)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 44, height: 44)
-                    .shadow(color: Color.blue.opacity(0.3), radius: 7, y: 3)
+                        .frame(width: 44, height: 44)
+                        .shadow(color: Color.blue.opacity(0.3), radius: 7, y: 3)
 
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(.white)
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("LibreBar")
+                        .font(.system(size: 19, weight: .bold))
+                        .tracking(-0.3)
+                    Text("Continuous glucose, right in the menu bar")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("LibreBar")
-                    .font(.system(size: 19, weight: .bold))
-                    .tracking(-0.3)
-                Text("Continuous glucose, right in the menu bar")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
 
             statusPill
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.top, 18)
-        .padding(.bottom, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
         .background(
             RadialGradient(
                 colors: [Color.blue.opacity(0.08), .clear],
@@ -309,25 +370,20 @@ struct SettingsView: View {
             connectState = .connecting
         }
 
-        if glucose.isNightscout {
-            Task {
+        Task {
+            if glucose.isNightscout {
                 await glucose.fetchGlucose()
-                withAnimation(.easeInOut(duration: 0.26)) {
-                    connectState = .connected
-                }
-                try? await Task.sleep(nanoseconds: 2_300_000_000)
-                withAnimation(.easeInOut(duration: 0.26)) {
-                    connectState = .idle
-                }
+            } else {
+                await glucose.configureAndFetch(email: email, password: password, region: region)
             }
-        } else {
-            glucose.configure(email: email, password: password, region: region)
-            Task {
-                try? await Task.sleep(nanoseconds: 1_100_000_000)
-                withAnimation(.easeInOut(duration: 0.26)) {
-                    connectState = .connected
-                }
-                try? await Task.sleep(nanoseconds: 2_300_000_000)
+
+            let succeeded = glucose.errorMessage == nil && glucose.latestReading != nil
+            withAnimation(.easeInOut(duration: 0.26)) {
+                connectState = succeeded ? .connected : .idle
+            }
+
+            if succeeded {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
                 withAnimation(.easeInOut(duration: 0.26)) {
                     connectState = .idle
                 }
@@ -380,63 +436,13 @@ struct SettingsView: View {
     private var targetRangeSection: some View {
         SettingsSection(label: "TARGET RANGE", hint: glucose.useMgdl ? "mg/dL" : "mmol/L") {
             GroupedCard {
-                VStack(spacing: 0) {
-                    // Range visualizer
-                    RangeVisualizerBar(
-                        low: glucose.lowThreshold,
-                        high: glucose.highThreshold,
-                        useMgdl: glucose.useMgdl
-                    )
-                    .padding(.horizontal, 18)
-                    .padding(.top, 30)
-                    .padding(.bottom, 14)
-
-                    rangeSliderRow(
-                        label: "Low",
-                        color: .orange,
-                        value: $glucose.lowThreshold,
-                        range: 2.5...(glucose.highThreshold - 0.2),
-                        step: 0.1
-                    )
-
-                    rangeSliderRow(
-                        label: "High",
-                        color: .red,
-                        value: $glucose.highThreshold,
-                        range: (glucose.lowThreshold + 0.2)...16.0,
-                        step: 0.1
-                    )
-                }
+                TargetRangeControls(
+                    low: $glucose.lowThreshold,
+                    high: $glucose.highThreshold,
+                    useMgdl: glucose.useMgdl
+                )
             }
         }
-    }
-
-    private func formatRangeValue(_ value: Double) -> String {
-        glucose.useMgdl ? "\(Int(round(value * 18.0182)))" : String(format: "%.1f", value)
-    }
-
-    private func rangeSliderRow(label: String, color: Color, value: Binding<Double>, range: ClosedRange<Double>, step: Double) -> some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(color)
-                    .frame(width: 8, height: 8)
-                Text(label)
-                    .font(.system(size: 13))
-            }
-            .frame(width: 50, alignment: .leading)
-
-            Slider(value: value, in: range, step: step)
-
-            Text(formatRangeValue(value.wrappedValue))
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .monospacedDigit()
-                .frame(width: 38, alignment: .trailing)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-        .frame(minHeight: 32)
-        .overlay(alignment: .top) { Divider() }
     }
 
     // MARK: - General Section
@@ -493,6 +499,83 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+            }
+        }
+    }
+
+    // MARK: - Alerts Section
+
+    private var alertsSection: some View {
+        SettingsSection(label: "ALERTS") {
+            GroupedCard {
+                VStack(spacing: 0) {
+                    SettingsRow(label: "Enable Alerts", hint: "Notify on out-of-range glucose") {
+                        Toggle("", isOn: $alertsEnabled)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                            .tint(.green)
+                            .onChange(of: alertsEnabled) { _, newValue in
+                                if newValue {
+                                    AlertManager.shared.requestAuthorization { _ in refreshPermission() }
+                                }
+                            }
+                    }
+
+                    if notifPermission == .denied {
+                        SettingsRow(label: "Permission", hint: "Enable in System Settings > Notifications") {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .font(.system(size: 12))
+                        }
+                    }
+
+                    SettingsRow(label: "Low / High") {
+                        HStack(spacing: 14) {
+                            checkboxToggle("Low", isOn: $alertLow)
+                            checkboxToggle("High", isOn: $alertHigh)
+                        }
+                    }
+
+                    SettingsRow(label: "Urgent", hint: "Very low or very high") {
+                        checkboxToggle("Enabled", isOn: $alertUrgent)
+                    }
+
+                    SettingsRow(label: "Other") {
+                        HStack(spacing: 14) {
+                            checkboxToggle("Stale data", isOn: $alertStale)
+                            checkboxToggle("Connection", isOn: $alertConnection)
+                        }
+                    }
+
+                    SettingsRow(label: "Urgent Sound") {
+                        Toggle("", isOn: $alertSound)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+
+                    SettingsRow(label: "Snooze Duration") {
+                        Picker("", selection: $snoozeMinutes) {
+                            Text("15 min").tag(15)
+                            Text("30 min").tag(30)
+                            Text("60 min").tag(60)
+                        }
+                        .labelsHidden()
+                        .frame(width: 100)
+                    }
+
+                    SettingsRow(label: "Test") {
+                        Button("Send Test Alert") {
+                            AlertManager.shared.requestAuthorization { _ in
+                                AlertManager.shared.sendTest()
+                                refreshPermission()
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                    .disabled(!alertsEnabled)
                 }
             }
         }
@@ -766,12 +849,10 @@ struct SettingsRow<Content: View>: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .frame(minWidth: 80, alignment: .leading)
+            .frame(width: 100, alignment: .leading)
 
-            HStack {
-                Spacer()
-                content()
-            }
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)

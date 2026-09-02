@@ -10,6 +10,8 @@ struct GraphView: View {
     var rateOfChange: Double? = nil
     var showMinMax: Bool = true
 
+    @State private var hoveredReading: GlucoseReading?
+
     private var filtered: [GlucoseReading] {
         let cutoff = Date().addingTimeInterval(-Double(hours) * 3600)
         return readings.filter { $0.timestamp > cutoff }
@@ -138,6 +140,37 @@ struct GraphView: View {
                             .foregroundStyle(.orange)
                     }
                 }
+
+                // Hover marker + tooltip
+                if let hovered = hoveredReading {
+                    let val = hovered.displayValue(mgdl: useMgdl)
+                    RuleMark(x: .value("Time", hovered.timestamp))
+                        .foregroundStyle(.secondary.opacity(0.4))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+
+                    PointMark(
+                        x: .value("Time", hovered.timestamp),
+                        y: .value("Glucose", val)
+                    )
+                    .foregroundStyle(hovered.color(low: lowThreshold, high: highThreshold))
+                    .symbolSize(40)
+                    .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        VStack(spacing: 1) {
+                            Text("\(hovered.displayFormatted(mgdl: useMgdl)) \(GlucoseReading.displayUnit(mgdl: useMgdl))")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(hovered.timestamp.formatted(date: .omitted, time: .shortened))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
+                        )
+                    }
+                }
             }
             .chartYAxis {
                 AxisMarks(position: .leading)
@@ -150,9 +183,25 @@ struct GraphView: View {
                 }
             }
             .chartPlotStyle { plot in
-                plot.background(.quaternary.opacity(0.3))
+                plot.background(.quaternary.opacity(0.18))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .frame(height: 120)
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(Color.clear)
+                        .contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let location):
+                                updateHover(at: location, proxy: proxy, geo: geo)
+                            case .ended:
+                                hoveredReading = nil
+                            }
+                        }
+                }
+            }
+            .frame(height: 160)
             .clipped()
         } else {
             Text("Not enough data for graph")
@@ -160,6 +209,18 @@ struct GraphView: View {
                 .font(.caption)
                 .frame(height: 60)
         }
+    }
+
+    private func updateHover(at location: CGPoint, proxy: ChartProxy, geo: GeometryProxy) {
+        let origin = geo[proxy.plotAreaFrame].origin
+        let xPosition = location.x - origin.x
+        guard let date: Date = proxy.value(atX: xPosition) else {
+            hoveredReading = nil
+            return
+        }
+        hoveredReading = filtered.min(by: {
+            abs($0.timestamp.timeIntervalSince(date)) < abs($1.timestamp.timeIntervalSince(date))
+        })
     }
 
     private func gradientColor(for reading: GlucoseReading) -> Color {

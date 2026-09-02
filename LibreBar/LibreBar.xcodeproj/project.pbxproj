@@ -17,6 +17,15 @@
 		A1000008 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000A; };
 		A1000009 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000B; };
 		A100000A /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C; };
+		A100000B /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000D; };
+		A100000C /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000E; };
+		A100000D /* MenuBarLabelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000F; };
+		A100000E /* AlertManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010; };
+		A100000F /* AlertSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000011; };
+		A1000010 /* GlucoseExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012; };
+		A1000011 /* GlucoseStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013; };
+		A1000012 /* TargetRangeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014; };
+		A1000013 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +41,15 @@
 		A200000A /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		A200000B /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
 		A200000C /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		A200000D /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A200000E /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
+		A200000F /* MenuBarLabelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarLabelView.swift; sourceTree = "<group>"; };
+		A2000010 /* AlertManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertManager.swift; sourceTree = "<group>"; };
+		A2000011 /* AlertSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertSettings.swift; sourceTree = "<group>"; };
+		A2000012 /* GlucoseExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseExporter.swift; sourceTree = "<group>"; };
+		A2000013 /* GlucoseStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseStats.swift; sourceTree = "<group>"; };
+		A2000014 /* TargetRangeControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetRangeControls.swift; sourceTree = "<group>"; };
+		A2000015 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		A3000001 /* LibreBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LibreBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -66,6 +84,15 @@
 				A200000A /* HotkeyManager.swift */,
 				A200000B /* HotkeyRecorderView.swift */,
 				A200000C /* UpdateChecker.swift */,
+				A200000D /* Theme.swift */,
+				A200000E /* PopoverView.swift */,
+				A200000F /* MenuBarLabelView.swift */,
+				A2000010 /* AlertManager.swift */,
+				A2000011 /* AlertSettings.swift */,
+				A2000012 /* GlucoseExporter.swift */,
+				A2000013 /* GlucoseStats.swift */,
+				A2000014 /* TargetRangeControls.swift */,
+				A2000015 /* OnboardingView.swift */,
 				A2000005 /* Assets.xcassets */,
 				A2000006 /* Info.plist */,
 				A2000007 /* LibreBar.entitlements */,
@@ -154,6 +181,15 @@
 				A1000008 /* HotkeyManager.swift in Sources */,
 				A1000009 /* HotkeyRecorderView.swift in Sources */,
 				A100000A /* UpdateChecker.swift in Sources */,
+				A100000B /* Theme.swift in Sources */,
+				A100000C /* PopoverView.swift in Sources */,
+				A100000D /* MenuBarLabelView.swift in Sources */,
+				A100000E /* AlertManager.swift in Sources */,
+				A100000F /* AlertSettings.swift in Sources */,
+				A1000010 /* GlucoseExporter.swift in Sources */,
+				A1000011 /* GlucoseStats.swift in Sources */,
+				A1000012 /* TargetRangeControls.swift in Sources */,
+				A1000013 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,7 +271,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2.3.3;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.librebar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -263,7 +299,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2.3.3;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.librebar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

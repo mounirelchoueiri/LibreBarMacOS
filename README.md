@@ -31,6 +31,8 @@ Everything is built around the idea that checking your glucose should be instant
 ## Features
 
 - **Menu bar display** — live glucose reading, trend arrow, color indicator dot, and mini sparkline graph
+- **Glucose alerts** — macOS notifications for low, high, urgent, stale-data, and connection issues, with an urgent sound and snooze
+- **CSV export** — export the visible history (1h, 3h, 12h) to a CSV file with a single click
 - **Dual data source** — connect via LibreLinkUp or Nightscout
 - **Color-coded readings** — green for in-range, orange for high/low, red for urgent
 - **Interactive graph** — selectable time range (1h, 3h, 12h, 24h with Nightscout) with gradient fill, prediction line, and min/max markers
@@ -65,6 +67,7 @@ LibreBar communicates only with the official LibreLinkUp API (libreview.io) or y
 - SwiftUI
 - AppKit
 - Swift Charts
+- UserNotifications (glucose alerts)
 - CryptoKit
 - Carbon (global hotkeys)
 - ServiceManagement
@@ -74,7 +77,7 @@ LibreBar communicates only with the official LibreLinkUp API (libreview.io) or y
 
 ### Requirements
 
-- macOS 14.0 or later
+- macOS 15.0 or later
 - A LibreLinkUp account with at least one active connection, **or** a Nightscout instance URL
 
 ### Download
@@ -99,8 +102,10 @@ LibreBar communicates only with the official LibreLinkUp API (libreview.io) or y
 If you prefer to build the app yourself:
 
 1. Clone the repository
-2. Open `LibreBar/LibreBar.xcodeproj` in Xcode 15 or later
+2. Open `LibreBar/LibreBar.xcodeproj` in Xcode 16 or later
 3. Build and run the app
+
+> **Note on alerts:** The first time you enable alerts in Settings, macOS will ask for permission to send notifications. If you previously denied it, enable LibreBar under **System Settings > Notifications**.
 
 ### Supported Regions (LibreLinkUp)
 
